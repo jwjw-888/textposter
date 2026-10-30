@@ -1,0 +1,9 @@
+{
+  // Cloudflare Workers 设定：把这个仓库当成静态网站发布
+  "name": "textposter",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./public",
+    "not_found_handling": "404-page"
+  }
+}

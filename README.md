@@ -9,3 +9,7 @@
 - 底色可选色或用调色盘自订（底色太深会自动换浅色字）
 - 附带 5 种免费字体（文楷、快乐体、小薇、毛笔、手写，均为 SIL OFL 授权，见 `fonts/OFL.txt`），选到时才下载
 - 可上传自己的字体（.ttf / .otf / .woff / .woff2），存在自己的浏览器里，不会上传到网络
+
+## 部署
+
+网站文件都在 `public/`，用 Cloudflare Workers 发布（设定在 `wrangler.jsonc`）。
