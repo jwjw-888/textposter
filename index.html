@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>文字海报</title>
+<meta name="description" content="输入文字，一键生成小红书风格的文字图片">
+<meta name="theme-color" content="#f4efe6">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='8' y='4' width='48' height='56' rx='6' fill='%23f6efe0' stroke='%23c9a46a' stroke-width='3'/%3E%3Cpath d='M18 20h28M18 30h28M18 40h18' stroke='%233b3226' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#f4efe6; --panel:#fffdf9; --ink:#2d2620; --muted:#8a7f72; --line:#e6ddcf;
+    --accent:#c4683f; --accent-soft:#f7e3d7; --radius:14px;
+    --sans:"PingFang SC","PingFang TC","Hiragino Sans GB","Microsoft YaHei","Microsoft JhengHei","Noto Sans CJK SC","Noto Sans SC",sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-text-size-adjust:100%}
+  header{padding:22px 20px 6px;max-width:1240px;margin:0 auto;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  header h1{margin:0;font-size:24px;letter-spacing:2px}
+  header p{margin:0;color:var(--muted);font-size:14px}
+  main{max-width:1240px;margin:0 auto;padding:12px 16px 40px;display:grid;grid-template-columns:400px 1fr;gap:20px;align-items:start}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+  .controls{display:flex;flex-direction:column;gap:14px}
+  .preview{position:sticky;top:12px}
+  label.f{display:block;font-size:13px;color:var(--muted);margin:0 0 6px}
+  input[type=text],textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:16px/1.6 var(--sans);color:var(--ink);background:#fff;outline:none;resize:vertical}
+  input[type=text]:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  textarea{min-height:200px}
+  .count{font-size:12px;color:var(--muted);text-align:right;margin-top:4px}
+  .section-title{font-size:15px;font-weight:600;margin:0 0 10px}
+  .tpls{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+  .tpl{border:2px solid transparent;border-radius:10px;padding:0;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;font:12px var(--sans);color:var(--muted)}
+  .tpl canvas{width:100%;border-radius:7px;display:block;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+  .tpl.on{color:var(--ink);font-weight:600}
+  .tpl.on canvas{outline:2px solid var(--accent);outline-offset:2px}
+  .row{display:flex;align-items:center;gap:10px;margin:10px 0}
+  .row>span{width:62px;flex:none;font-size:13px;color:var(--muted)}
+  .seg{display:flex;flex-wrap:wrap;gap:6px}
+  .seg button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;font:13px var(--sans);color:var(--ink);cursor:pointer}
+  .seg button.on{background:var(--ink);border-color:var(--ink);color:#fff}
+  input[type=range]{flex:1;accent-color:var(--accent)}
+  .val{width:36px;text-align:right;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .swatches{display:flex;gap:8px;flex-wrap:wrap}
+  .sw{width:28px;height:28px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px var(--line);cursor:pointer;padding:0}
+  .sw.on{box-shadow:0 0 0 2px var(--accent)}
+  .sw.auto{background:conic-gradient(#3b3226 0 25%,#fff1a6 0 50%,#ebe5d8 0 75%,#24324a 0)}
+  .check{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;user-select:none}
+  .check input{width:18px;height:18px;accent-color:var(--accent)}
+  .checks{display:flex;gap:18px;flex-wrap:wrap;margin-top:6px}
+  .pv-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+  .pv-head .info{font-size:14px;color:var(--muted)}
+  .btn{border:none;border-radius:10px;padding:10px 18px;font:600 15px var(--sans);cursor:pointer;background:var(--accent);color:#fff}
+  .btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  .pages{display:flex;gap:16px;overflow-x:auto;padding:4px 2px 12px;scroll-snap-type:x mandatory}
+  .page{flex:none;width:min(340px,78vw);scroll-snap-align:start;cursor:zoom-in;position:relative}
+  .page canvas{width:100%;display:block;border-radius:8px;box-shadow:0 4px 18px rgba(60,40,20,.15)}
+  .page .no{position:absolute;left:8px;top:8px;background:rgba(0,0,0,.55);color:#fff;font-size:12px;padding:2px 8px;border-radius:999px}
+  .hint{font-size:12px;color:var(--muted);margin-top:4px}
+  .modal{position:fixed;inset:0;background:rgba(20,15,10,.82);display:none;flex-direction:column;align-items:center;justify-content:center;padding:16px;z-index:10}
+  .modal.show{display:flex}
+  .modal img{max-width:100%;max-height:calc(100vh - 140px);border-radius:8px;-webkit-touch-callout:default}
+  .modal .bar{display:flex;gap:10px;margin-top:14px}
+  .modal p{color:#eee;font-size:13px;margin:10px 0 0}
+  @media (max-width:860px){
+    main{grid-template-columns:1fr}
+    .preview{position:static;order:2}
+    .controls{display:contents}
+    #c-text{order:1}#c-tpl{order:3}#c-style{order:4}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>文字海报</h1>
+  <p>打字，选样式，存成图片</p>
+</header>
+
+<main>
+  <div class="controls">
+    <section class="panel" id="c-text">
+      <label class="f" for="title">标题（可不填）</label>
+      <input type="text" id="title" placeholder="比如：今天想说的话" maxlength="60">
+      <label class="f" for="body" style="margin-top:12px">正文</label>
+      <textarea id="body" placeholder="在这里输入或粘贴文字，换行会保留；空一行就是段落间距。字多了会自动分成好几张。"></textarea>
+      <div class="count" id="count">0 字</div>
+    </section>
+
+    <section class="panel" id="c-tpl">
+      <h2 class="section-title">背景模板</h2>
+      <div class="tpls" id="tpls"></div>
+    </section>
+
+    <section class="panel" id="c-style">
+      <h2 class="section-title">文字样式</h2>
+      <div class="row"><span>尺寸</span><div class="seg" id="ratio"></div></div>
+      <div class="row"><span>字体</span><div class="seg" id="font"></div></div>
+      <div class="row"><span>对齐</span><div class="seg" id="align"></div></div>
+      <div class="row"><span>字号</span><input type="range" id="fontSize" min="34" max="84" step="1"><b class="val" id="fontSizeV"></b></div>
+      <div class="row"><span>行距</span><input type="range" id="lineHeight" min="1.3" max="2.4" step="0.05"><b class="val" id="lineHeightV"></b></div>
+      <div class="row"><span>文字颜色</span><div class="swatches" id="colors"></div></div>
+      <div class="checks">
+        <label class="check"><input type="checkbox" id="indent">首行缩进</label>
+        <label class="check"><input type="checkbox" id="marker">标题马克笔</label>
+        <label class="check"><input type="checkbox" id="showDate">显示日期</label>
+      </div>
+      <label class="f" for="sign" style="margin-top:14px">署名 / 水印（显示在左下角）</label>
+      <input type="text" id="sign" placeholder="@你的昵称" maxlength="30">
+    </section>
+  </div>
+
+  <section class="panel preview" id="c-preview">
+    <div class="pv-head">
+      <div class="info" id="pvInfo">预览</div>
+      <button class="btn" id="dlAll">下载全部图片</button>
+    </div>
+    <div class="pages" id="pages"></div>
+    <div class="hint">点图片可以放大；手机上放大后长按图片就能存到相册。</div>
+  </section>
+</main>
+
+<div class="modal" id="modal">
+  <img id="modalImg" alt="海报预览">
+  <p>手机：长按图片保存到相册　电脑：点“下载”</p>
+  <div class="bar">
+    <button class="btn" id="modalDl">下载这张</button>
+    <button class="btn ghost" id="modalClose">关闭</button>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ---------- 基本设定 ---------- */
+const FONTS = {
+  sans:  {name:'黑体', stack:'"PingFang SC","PingFang TC","Hiragino Sans GB","Microsoft YaHei","Microsoft JhengHei","Noto Sans CJK SC","Noto Sans SC","Source Han Sans SC",sans-serif'},
+  serif: {name:'宋体', stack:'"Songti SC","STSong","Noto Serif CJK SC","Noto Serif SC","Source Han Serif SC","SimSun","PMingLiU",serif'},
+  kai:   {name:'楷体', stack:'"Kaiti SC","STKaiti","KaiTi","KaiTi_GB2312","DFKai-SB","BiauKai",serif'},
+};
+const RATIOS = { '3:4':[1080,1440], '1:1':[1080,1080], '9:16':[1080,1920] };
+const ALIGNS = { justify:'两端', left:'靠左', center:'居中' };
+const COLORS = [null,'#2b2620','#5b3a29','#ffffff','#b23a3a','#2f4f86'];
+
+/* 简单的固定随机数，让纸纹每次都一样 */
+function rng(seed){ return () => (seed = (seed*16807) % 2147483647) / 2147483647; }
+function grain(ctx,W,H,alpha,color,seed=7){
+  const r = rng(seed); ctx.save(); ctx.fillStyle = color;
+  const n = Math.round(W*H/700);
+  for(let i=0;i<n;i++){ ctx.globalAlpha = alpha*r(); const s = 1+r()*2; ctx.fillRect(r()*W, r()*H, s, s); }
+  ctx.restore();
+}
+function fill(ctx,W,H,c){ ctx.fillStyle=c; ctx.fillRect(0,0,W,H); }
+function lin(ctx,W,H,a,b){ const g=ctx.createLinearGradient(0,0,W,H); g.addColorStop(0,a); g.addColorStop(1,b); ctx.fillStyle=g; ctx.fillRect(0,0,W,H); }
+
+const TPLS = [
+  {id:'cream', name:'奶油纸', text:'#3b3226', accent:'#d9b273', bg(c,W,H){ fill(c,W,H,'#f6efe0'); grain(c,W,H,.10,'#8a6a3a'); }},
+  {id:'sticky', name:'便签', text:'#3d3418', accent:'#f2b600', top:180, bg(c,W,H){
+      fill(c,W,H,'#fff1a6');
+      const g=c.createLinearGradient(W*.55,H*.55,W,H); g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(120,90,0,.10)'); c.fillStyle=g; c.fillRect(0,0,W,H);
+      grain(c,W,H,.06,'#8a6d00');
+      c.save(); c.translate(W/2,46); c.rotate(-0.04); c.fillStyle='rgba(255,255,255,.55)'; c.fillRect(-150,-34,300,84);
+      c.strokeStyle='rgba(0,0,0,.05)'; c.strokeRect(-150,-34,300,84); c.restore();
+  }},
+  {id:'ruled', name:'横线本', text:'#2b3440', accent:'#f4a3a3', ruled:'rgba(70,120,190,.30)', bg(c,W,H){
+      fill(c,W,H,'#fffdf7'); c.fillStyle='rgba(220,90,90,.45)'; c.fillRect(70,0,3,H);
+  }},
+  {id:'grid', name:'方格纸', text:'#2e2e2e', accent:'#9fd3c7', bg(c,W,H){
+      fill(c,W,H,'#fbfaf6'); c.strokeStyle='rgba(60,90,90,.10)'; c.lineWidth=2; const s=54;
+      c.beginPath(); for(let x=s/2;x<W;x+=s){c.moveTo(x,0);c.lineTo(x,H);} for(let y=s/2;y<H;y+=s){c.moveTo(0,y);c.lineTo(W,y);} c.stroke();
+  }},
+  {id:'peach', name:'蜜桃', text:'#5a2e2e', accent:'#ff9d9d', bg(c,W,H){ lin(c,W,H,'#ffe6e3','#ffd6bf'); grain(c,W,H,.06,'#a0503a'); }},
+  {id:'sky', name:'晴空', text:'#24324a', accent:'#9dbcff', bg(c,W,H){ lin(c,W,H,'#e0ecff','#f0e4ff'); grain(c,W,H,.05,'#40507a'); }},
+  {id:'matcha', name:'抹茶', text:'#2f3b27', accent:'#b9d08f', bg(c,W,H){ fill(c,W,H,'#e5ecd8'); grain(c,W,H,.08,'#4d6234'); }},
+  {id:'letter', name:'信纸', text:'#4a3b2a', accent:'#e2c79c', bg(c,W,H){
+      fill(c,W,H,'#fbf6ec'); grain(c,W,H,.07,'#8a6a3a');
+      c.strokeStyle='#c4a378'; c.lineWidth=3; c.strokeRect(38,38,W-76,H-76); c.lineWidth=1.5; c.strokeRect(52,52,W-104,H-104);
+  }},
+  {id:'night', name:'夜读', text:'#ece6d9', accent:'#a3843f', bg(c,W,H){
+      fill(c,W,H,'#1d1e21'); const g=c.createRadialGradient(W/2,H*.35,50,W/2,H*.35,H*.8);
+      g.addColorStop(0,'rgba(255,240,210,.10)'); g.addColorStop(1,'rgba(0,0,0,0)'); c.fillStyle=g; c.fillRect(0,0,W,H);
+      grain(c,W,H,.08,'#ffffff');
+  }},
+  {id:'plain', name:'纯白', text:'#222222', accent:'#ffe066', bg(c,W,H){ fill(c,W,H,'#ffffff'); }},
+];
+const tplById = id => TPLS.find(t=>t.id===id) || TPLS[0];
+
+/* ---------- 状态（会记在浏览器里） ---------- */
+const DEFAULTS = {
+  title:'把日子过成喜欢的样子',
+  body:'不用急着变成别人期待的样子。\n\n慢慢来，按自己的节奏，把每一件小事做好：早上给自己泡一杯热茶，下班路上看一眼晚霞，睡前写下今天值得开心的三件事。\n\n生活不会一下子变好，但会在这些小小的坚持里，一点一点亮起来。',
+  tpl:'cream', font:'sans', ratio:'3:4', align:'justify', fontSize:50, lineHeight:1.8,
+  color:null, indent:false, marker:true, showDate:false, sign:'',
+};
+let st = {...DEFAULTS};
+try { const s = JSON.parse(localStorage.getItem('textposter') || 'null'); if (s) st = {...DEFAULTS, ...s}; } catch(e){}
+function save(){ try { localStorage.setItem('textposter', JSON.stringify(st)); } catch(e){} }
+
+/* ---------- 排版 ---------- */
+const NO_START = '，。、；：！？）》」』】〕〉’”…—～·,.;:!?)]}%';
+const NO_END   = '（《「『【〔〈‘“([{';
+const TOKEN_RE = /[A-Za-z0-9][A-Za-z0-9'’\-.,:%/@#_&+]*|\p{Extended_Pictographic}(?:️|‍\p{Extended_Pictographic}|[\u{1F3FB}-\u{1F3FF}])*|[\s\S]/gu;
+
+const mctx = document.createElement('canvas').getContext('2d');
+const fontStr = (weight,size,font) => `${weight} ${size}px ${FONTS[font].stack}`;
+
+function wrap(ctx, text, maxW, indentW){
+  const lines = []; let cur = [], curW = indentW;
+  const push = (last) => {
+    while (cur.length && /^\s+$/.test(cur[cur.length-1].t)) { curW -= cur.pop().w; }
+    lines.push({toks:cur, indent: lines.length===0 ? indentW : 0, last});
+  };
+  const toks = [];
+  for (const t of (text.match(TOKEN_RE) || [])) {
+    const w = ctx.measureText(t).width;
+    if (w > maxW * 0.9 && t.length > 1) { for (const ch of t) toks.push({t:ch, w:ctx.measureText(ch).width}); }
+    else toks.push({t, w});
+  }
+  for (const tok of toks) {
+    const isSpace = /^\s+$/.test(tok.t);
+    if (isSpace && cur.length === 0) continue;
+    if (curW + tok.w > maxW && cur.length) {
+      if (NO_START.includes(tok.t[0])) { cur.push(tok); curW += tok.w; continue; } // 标点挂在行尾
+      let carry = [];
+      if (cur.length > 1 && NO_END.includes(cur[cur.length-1].t)) carry = [cur.pop()];
+      curW = cur.reduce((s,x)=>s+x.w,0);
+      push(false);
+      cur = carry; curW = carry.reduce((s,x)=>s+x.w,0);
+      if (isSpace) continue;
+    }
+    cur.push(tok); curW += tok.w;
+  }
+  if (cur.length || lines.length === 0) push(true);
+  else if (lines.length) lines[lines.length-1].last = true;
+  return lines;
+}
+
+function layout(st, W, H){
+  const tpl = tplById(st.tpl);
+  const pad = {l:100, r:100, t: tpl.top || 150, b:160};
+  const cw = W - pad.l - pad.r, avail = H - pad.t - pad.b;
+  const fs = st.fontSize, lh = fs * st.lineHeight;
+  const tfs = Math.round(fs * 1.42), tlh = tfs * 1.4;
+  const items = [];
+
+  const title = st.title.trim();
+  if (title) {
+    mctx.font = fontStr(700, tfs, st.font);
+    for (const ln of wrap(mctx, title, cw, 0)) items.push({kind:'title', h:tlh, line:ln});
+    items.push({kind:'space', h: fs * 1.1});
+  }
+  mctx.font = fontStr(400, fs, st.font);
+  const indentW = st.indent ? mctx.measureText('中').width * 2 : 0;
+  const paras = st.body.replace(/\r/g,'').split('\n');
+  paras.forEach((p, i) => {
+    if (!p.trim()) { items.push({kind:'space', h: lh * 0.6}); return; }
+    for (const ln of wrap(mctx, p.trim(), cw, indentW)) items.push({kind:'body', h:lh, line:ln});
+    if (i < paras.length-1 && paras[i+1].trim()) items.push({kind:'space', h: lh * 0.25});
+  });
+
+  const pages = [[]]; let y = 0;
+  for (const it of items) {
+    let page = pages[pages.length-1];
+    if (it.kind === 'space' && page.length === 0) continue;
+    if (y + it.h > avail && page.length) { pages.push(page = []); y = 0; if (it.kind === 'space') continue; }
+    page.push({...it, y}); y += it.h;
+  }
+  for (const p of pages) while (p.length && p[p.length-1].kind === 'space') p.pop();
+  return {pages, pad, cw, fs, lh, tfs, tlh};
+}
+
+function drawLine(ctx, line, x0, yMid, maxW, align, fs){
+  const total = line.toks.reduce((s,t)=>s+t.w,0);
+  const avail = maxW - line.indent;
+  let x = x0 + line.indent, gap = 0;
+  if (align === 'center') x = x0 + (maxW - total) / 2;
+  else if (align === 'justify' && !line.last && line.toks.length > 1 && total < avail) {
+    gap = (avail - total) / (line.toks.length - 1);
+    if (gap > fs * 0.5) gap = 0;            // 断行太早时就不硬撑开
+  }
+  for (const t of line.toks) { ctx.fillText(t.t, x, yMid); x += t.w + gap; }
+  return {x0: align==='center' ? x0 + (maxW-total)/2 : x0 + line.indent, w: total + gap * Math.max(0,line.toks.length-1)};
+}
+
+function hexA(hex, a){
+  const n = parseInt(hex.slice(1),16);
+  return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`;
+}
+
+function drawPage(ctx, st, W, H, L, pi){
+  const tpl = tplById(st.tpl), color = st.color || tpl.text;
+  const {pad, cw, fs, lh, tfs, tlh} = L, page = L.pages[pi];
+  tpl.bg(ctx, W, H);
+  ctx.textBaseline = 'middle';
+
+  // 横线本：在每一行字下面画线，并一路画到底
+  if (tpl.ruled) {
+    ctx.fillStyle = tpl.ruled;
+    let lastY = pad.t;
+    for (const it of page) if (it.kind === 'body') { const y = pad.t + it.y + lh/2 + fs*0.68; ctx.fillRect(40, y, W-80, 2); lastY = y; }
+    for (let y = lastY + lh; y < H - pad.b + lh*0.5; y += lh) ctx.fillRect(40, y, W-80, 2);
+  }
+
+  for (const it of page) {
+    const top = pad.t + it.y;
+    if (it.kind === 'title') {
+      ctx.font = fontStr(700, tfs, st.font);
+      const align = st.align === 'center' ? 'center' : 'left';
+      const total = it.line.toks.reduce((s,t)=>s+t.w,0);
+      const x = align === 'center' ? pad.l + (cw-total)/2 : pad.l;
+      if (st.marker && total > 0) {
+        ctx.fillStyle = hexA(tpl.accent, tpl.id === 'night' ? .55 : .6);
+        ctx.fillRect(x - 6, top + tlh/2 + tfs*0.08, total + 12, tfs*0.42);
+      }
+      ctx.fillStyle = color;
+      drawLine(ctx, it.line, pad.l, top + tlh/2, cw, align, tfs);
+    } else if (it.kind === 'body') {
+      ctx.font = fontStr(400, fs, st.font);
+      ctx.fillStyle = color;
+      drawLine(ctx, it.line, pad.l, top + lh/2, cw, st.align, fs);
+    }
+  }
+
+  // 页脚：署名、日期、页码
+  const total = L.pages.length, ffs = Math.round(Math.max(26, fs * 0.56));
+  ctx.font = fontStr(400, ffs, st.font);
+  ctx.fillStyle = hexA(color.length === 7 ? color : '#000000', .55);
+  const fy = H - pad.b/2 - 6;
+  if (st.sign.trim()) { ctx.textAlign = 'left'; ctx.fillText(st.sign.trim(), pad.l, fy); }
+  const right = [];
+  if (st.showDate) { const d = new Date(); right.push(`${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`); }
+  if (total > 1) right.push(`${pi+1}/${total}`);
+  if (right.length) { ctx.textAlign = 'right'; ctx.fillText(right.join('  ·  '), W - pad.r, fy); }
+  ctx.textAlign = 'left';
+}
+
+function renderAll(st){
+  const [W,H] = RATIOS[st.ratio];
+  const L = layout(st, W, H);
+  return L.pages.map((_, i) => {
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    drawPage(c.getContext('2d'), st, W, H, L, i);
+    return c;
+  });
+}
+
+/* ---------- 界面 ---------- */
+const $ = id => document.getElementById(id);
+const pagesEl = $('pages');
+let canvases = [];
+
+function seg(el, opts, key){
+  el.innerHTML = '';
+  for (const [v, label] of Object.entries(opts)) {
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = label;
+    b.className = st[key] === v ? 'on' : '';
+    b.onclick = () => { st[key] = v; seg(el, opts, key); update(); };
+    el.appendChild(b);
+  }
+}
+
+function buildTplThumbs(){
+  const box = $('tpls'); box.innerHTML = '';
+  const sample = {...st, title:'标题', body:'把喜欢的文字\n做成好看的图片', marker:true, sign:'', showDate:false, fontSize:64, ratio:'3:4', color:null, align:'left', indent:false};
+  for (const t of TPLS) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'tpl' + (st.tpl === t.id ? ' on' : '');
+    const c = document.createElement('canvas'); c.width = 216; c.height = 288;
+    const ctx = c.getContext('2d'); ctx.scale(0.2, 0.2);
+    const s = {...sample, tpl:t.id};
+    drawPage(ctx, s, 1080, 1440, layout(s, 1080, 1440), 0);
+    b.appendChild(c); b.append(t.name);
+    b.onclick = () => { st.tpl = t.id; box.querySelectorAll('.tpl').forEach(x=>x.classList.remove('on')); b.classList.add('on'); update(); };
+    box.appendChild(b);
+  }
+}
+
+function buildColors(){
+  const box = $('colors'); box.innerHTML = '';
+  COLORS.forEach(col => {
+    const b = document.createElement('button'); b.type = 'button';
+    b.className = 'sw' + (col ? '' : ' auto') + (st.color === col ? ' on' : '');
+    if (col) b.style.background = col;
+    b.title = col ? col : '跟随模板';
+    b.onclick = () => { st.color = col; buildColors(); update(); };
+    box.appendChild(b);
+  });
+}
+
+let timer = 0;
+function update(){ clearTimeout(timer); timer = setTimeout(render, 80); save(); }
+
+function render(){
+  canvases = renderAll(st);
+  pagesEl.innerHTML = '';
+  canvases.forEach((c, i) => {
+    const d = document.createElement('div'); d.className = 'page';
+    d.appendChild(c);
+    if (canvases.length > 1) { const n = document.createElement('span'); n.className = 'no'; n.textContent = `${i+1}/${canvases.length}`; d.appendChild(n); }
+    d.onclick = () => openModal(i);
+    pagesEl.appendChild(d);
+  });
+  const chars = [...(st.title + st.body).replace(/\s/g,'')].length;
+  $('count').textContent = `${chars} 字`;
+  $('pvInfo').textContent = `共 ${canvases.length} 张 · ${RATIOS[st.ratio].join('×')}`;
+  $('dlAll').textContent = canvases.length > 1 ? `下载全部 ${canvases.length} 张` : '下载图片';
+}
+
+function fileName(i){
+  const base = (st.title.trim() || st.body.trim().slice(0,12) || '文字海报').replace(/[\\/:*?"<>|\s]+/g,'');
+  return canvases.length > 1 ? `${base}-${i+1}.png` : `${base}.png`;
+}
+function download(i){
+  return new Promise(res => canvases[i].toBlob(blob => {
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fileName(i);
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => { URL.revokeObjectURL(a.href); res(); }, 400);
+  }, 'image/png'));
+}
+
+let modalIdx = 0;
+function openModal(i){ modalIdx = i; $('modalImg').src = canvases[i].toDataURL('image/png'); $('modal').classList.add('show'); }
+$('modalClose').onclick = () => $('modal').classList.remove('show');
+$('modal').onclick = e => { if (e.target === $('modal')) $('modal').classList.remove('show'); };
+$('modalDl').onclick = () => download(modalIdx);
+$('dlAll').onclick = async () => { for (let i = 0; i < canvases.length; i++) await download(i); };
+
+/* 绑定输入 */
+for (const k of ['title','body','sign']) { $(k).value = st[k]; $(k).addEventListener('input', e => { st[k] = e.target.value; update(); }); }
+for (const k of ['indent','marker','showDate']) { $(k).checked = st[k]; $(k).addEventListener('change', e => { st[k] = e.target.checked; update(); }); }
+for (const k of ['fontSize','lineHeight']) {
+  const show = () => $(k+'V').textContent = k === 'fontSize' ? st[k] : (+st[k]).toFixed(2);
+  $(k).value = st[k]; show();
+  $(k).addEventListener('input', e => { st[k] = +e.target.value; show(); update(); });
+}
+seg($('ratio'), {'3:4':'3:4 小红书','1:1':'1:1 方形','9:16':'9:16 竖屏'}, 'ratio');
+seg($('font'), Object.fromEntries(Object.entries(FONTS).map(([k,v])=>[k,v.name])), 'font');
+seg($('align'), ALIGNS, 'align');
+$('font').addEventListener('click', buildTplThumbs);
+buildColors();
+buildTplThumbs();
+render();
+})();
+</script>
+</body>
+</html>
