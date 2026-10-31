@@ -1,5 +1,5 @@
 // 文字海报：离线也能用。网页本身先用网络最新版，没网时用暂存；字体用过一次就存起来。
-const CACHE = 'textposter-v1';
+const CACHE = 'textposter-v2';
 const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {

@@ -40,6 +40,9 @@
   .tpls{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
   .tpl{border:2px solid transparent;border-radius:10px;padding:0;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;font:12px var(--sans);color:var(--muted)}
   .tpl canvas{width:100%;border-radius:7px;display:block;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+  .tpl{position:relative}
+  .tpl .x{position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;background:#fff;border:1px solid var(--line);font-size:12px;line-height:20px;color:var(--muted)}
+  .tpl.add .box{width:100%;aspect-ratio:3/4;border:2px dashed var(--line);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:26px;color:var(--muted)}
   .tpl.on{color:var(--ink);font-weight:600}
   .tpl.on canvas{outline:2px solid var(--accent);outline-offset:2px}
   .row{display:flex;align-items:center;gap:10px;margin:10px 0}
@@ -131,6 +134,8 @@
     <section class="panel" id="c-tpl">
       <h2 class="section-title">背景模板</h2>
       <div class="tpls" id="tpls"></div>
+      <input type="file" id="bgFile" accept="image/*" hidden>
+      <div class="fstatus" id="bgStatus" style="margin:6px 0 0"></div>
       <div class="row" style="margin-top:14px"><span>底色</span><div class="swatches" id="bgColors"></div></div>
     </section>
 
@@ -211,15 +216,15 @@ function ensureFont(key){
   return f.loading;
 }
 const DB = {
-  open(){ return new Promise((res, rej) => { const r = indexedDB.open('textposter', 1);
-    r.onupgradeneeded = () => r.result.createObjectStore('fonts', {keyPath:'id'});
+  open(){ return new Promise((res, rej) => { const r = indexedDB.open('textposter', 2);
+    r.onupgradeneeded = () => { for (const n of ['fonts','images']) if (!r.result.objectStoreNames.contains(n)) r.result.createObjectStore(n, {keyPath:'id'}); };
     r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); },
-  async run(mode, fn){ const db = await this.open(); return new Promise((res, rej) => {
-    const tx = db.transaction('fonts', mode); const out = fn(tx.objectStore('fonts'));
+  async run(mode, fn, store = 'fonts'){ const db = await this.open(); return new Promise((res, rej) => {
+    const tx = db.transaction(store, mode); const out = fn(tx.objectStore(store));
     tx.oncomplete = () => res(out && out.result); tx.onerror = () => rej(tx.error); }); },
-  all(){ return this.run('readonly', s => s.getAll()); },
-  put(v){ return this.run('readwrite', s => s.put(v)); },
-  del(id){ return this.run('readwrite', s => s.delete(id)); },
+  all(store){ return this.run('readonly', s => s.getAll(), store); },
+  put(v, store){ return this.run('readwrite', s => s.put(v), store); },
+  del(id, store){ return this.run('readwrite', s => s.delete(id), store); },
 };
 function registerCustom(rec){
   FONTS['u:'+rec.id] = {name:rec.name, family:'TPU'+rec.id, buf:rec.buf, custom:true, stack:`"TPU${rec.id}",${SANS}`};
@@ -271,7 +276,102 @@ const TPLS = [
       grain(c,W,H,.08,'#ffffff');
   }},
   {id:'plain', name:'纯白', base:'#ffffff', text:'#222222', accent:'#ffe066', bg(c,W,H,b){ fill(c,W,H,b); }},
+
+  /* ---- 漫画 / 复古风格（全部用程序画，不用外部图片） ---- */
+  {id:'vintage', name:'复古星框', base:'#fbf2cf', text:'#23395b', accent:'#eba79c', left:110, top:180, bottom:200, foot:150, bg(c,W,H,b){
+      const B = 66;
+      fill(c,W,H,'#efe2b4');
+      c.fillStyle = '#1f4d6d'; c.fillRect(8,8,W-16,H-16);
+      c.save(); c.beginPath(); c.rect(B,B,W-2*B,H-2*B); c.clip();
+      fill(c,W,H,b);
+      rays(c,W,H,W/2,H/2,40,['rgba(228,140,120,.30)',null,'rgba(120,160,175,.30)',null]);
+      const g = c.createRadialGradient(W/2,H/2,0,W/2,H/2,H*.45); g.addColorStop(0,'rgba(255,250,215,.9)'); g.addColorStop(1,'rgba(255,250,215,0)');
+      c.fillStyle = g; c.fillRect(0,0,W,H);
+      grain(c,W,H,.10,'#8a6a3a',3);
+      const r = rng(11); c.fillStyle = 'rgba(31,77,109,.75)';          // 斑驳的旧墨点
+      for (let i=0;i<260;i++){ const side=i%4, t=r(); const d=r()*r()*90;
+        const x = side===0? B+d : side===1? W-B-d : B+t*(W-2*B);
+        const y = side>1 ? (side===2? B+d : H-B-d) : B+t*(H-2*B);
+        c.beginPath(); c.ellipse(x,y,2+r()*9,1+r()*3,r()*3,0,7); c.fill(); }
+      c.restore();
+      c.fillStyle = '#1f4d6d';                                         // 四角的圆弧
+      for (const [x,y] of [[B,B],[W-B,B],[B,H-B],[W-B,H-B]]) { c.beginPath(); c.arc(x,y,62,0,7); c.fill(); }
+      for (const [x,y] of [[52,52],[W-52,52],[52,H-52],[W-52,H-52]]) star(c,x,y,38,'#d8343a','#f6e7bf');
+      const step = 68;                                                 // 边框上的小星星
+      for (let x=130; x<W-110; x+=step) { star(c,x,37,12,'#d8343a','#f6e7bf'); star(c,x,H-37,12,'#d8343a','#f6e7bf'); }
+      for (let y=130; y<H-110; y+=step) { star(c,37,y,12,'#d8343a','#f6e7bf'); star(c,W-37,y,12,'#d8343a','#f6e7bf'); }
+  }},
+  {id:'comicOrange', name:'漫画橙', base:'#ffc23e', text:'#3b1d00', accent:'#ff7a2f', bg(c,W,H,b){
+      fill(c,W,H,b);
+      spikes(c,W,H,W/2,H/2,90,'rgba(245,120,45,.75)',H*.42,5);
+      spikes(c,W,H,W/2,H/2,40,'rgba(225,70,35,.6)',H*.5,9);
+      const dot = (cx,cy) => (x,y) => Math.max(0, 15 * (1 - Math.hypot(x-cx,y-cy)/(W*.62)));
+      halftone(c,0,0,W,H,34,'rgba(245,125,45,.6)',(x,y)=>Math.max(dot(W,0)(x,y),dot(0,H)(x,y)));
+  }},
+  {id:'comicYellow', name:'漫画黄', base:'#ffd60a', text:'#4a2800', accent:'#ff8a3d', bg(c,W,H,b){
+      const g = c.createRadialGradient(W/2,H/2,0,W/2,H/2,H*.75); g.addColorStop(0,'#fff27a'); g.addColorStop(.45,b); g.addColorStop(1,'#f2a900');
+      c.fillStyle = g; c.fillRect(0,0,W,H);
+      rays(c,W,H,W/2,H/2,48,['rgba(215,135,0,.16)',null]);
+      halftone(c,0,0,W,H,18,'rgba(235,95,40,.38)',(x,y)=>1.6+2.2*Math.min(1,Math.hypot(x-W/2,y-H/2)/(H*.55)));
+      spikes(c,W,H,W/2,H/2,70,'rgba(185,105,0,.55)',H*.38,4);
+  }},
+  {id:'comicRed', name:'漫画红', base:'#e5301f', text:'#ffffff', accent:'#ffd84d', top:220, bottom:210, bg(c,W,H,b){
+      const g = c.createLinearGradient(0,0,0,H); g.addColorStop(0,b); g.addColorStop(1,'#ff7a26');
+      c.fillStyle = g; c.fillRect(0,0,W,H);
+      halftone(c,0,0,W,H,22,'rgba(255,255,255,.13)',()=>6.5);
+      const panel = (pts, rayFrom) => {                                // 角落的漫画格子
+        c.save(); c.beginPath(); pts.forEach(([x,y],i)=> i? c.lineTo(x,y) : c.moveTo(x,y)); c.closePath(); c.clip();
+        fill(c,W,H,'#ffd21f'); spikes(c,W,H,rayFrom[0],rayFrom[1],40,'rgba(240,150,0,.7)',60,8);
+        c.restore();
+        c.lineJoin = 'round';
+        c.beginPath(); c.moveTo(...pts[0]); c.lineTo(...pts[pts.length-1]);
+        c.strokeStyle = '#1b1b1b'; c.lineWidth = 46; c.stroke(); c.strokeStyle = '#ffffff'; c.lineWidth = 30; c.stroke();
+      };
+      panel([[W*.42,0],[W,0],[W,H*.17]],[W,0]);
+      panel([[0,H*.83],[0,H],[W*.58,H]],[0,H]);
+      c.strokeStyle='#1b1b1b'; c.lineWidth=12;                          // 格子分隔线
+      c.beginPath(); c.moveTo(W*.74,0); c.lineTo(W*.86,H*.09); c.moveTo(W*.24,H); c.lineTo(W*.12,H*.92); c.stroke();
+      c.strokeStyle='#ffffff'; c.lineWidth=6; c.stroke();
+      for (const [x,y,r] of [[44,560,26],[70,640,20],[36,700,16],[W-44,H-560,26],[W-70,H-640,20],[W-36,H-700,16]]) star(c,x,y,r,'#ffe14d','#a32014');
+  }},
+  {id:'legal', name:'黄色横线', base:'#fdf6a3', text:'#1f2a44', accent:'#8fbcff', left:150, ruled:'rgba(40,110,180,.75)', ruledFull:true, bg(c,W,H,b){
+      fill(c,W,H,b); c.fillStyle = '#d9534f'; c.fillRect(118,0,3,H);
+  }},
 ];
+function rays(c,W,H,cx,cy,n,colors){                       // 放射状色块
+  const R = Math.hypot(W,H), step = Math.PI*2/n;
+  for (let i=0;i<n;i++){ const col = colors[i%colors.length]; if (!col) continue;
+    c.fillStyle = col; c.beginPath(); c.moveTo(cx,cy); c.arc(cx,cy,R,i*step,(i+1)*step); c.closePath(); c.fill(); }
+}
+function spikes(c,W,H,cx,cy,n,color,minR,seed){             // 漫画速度线
+  const r = rng(seed), R = Math.hypot(W,H); c.fillStyle = color;
+  for (let i=0;i<n;i++){ const a=r()*Math.PI*2, w=.004+r()*.014, inner=minR*(.75+r()*.6);
+    c.beginPath(); c.moveTo(cx+Math.cos(a)*inner, cy+Math.sin(a)*inner);
+    c.lineTo(cx+Math.cos(a-w)*R, cy+Math.sin(a-w)*R); c.lineTo(cx+Math.cos(a+w)*R, cy+Math.sin(a+w)*R); c.fill(); }
+}
+function halftone(c,x0,y0,x1,y1,step,color,size){           // 网点
+  c.fillStyle = color; let row = 0;
+  for (let y=y0; y<y1+step; y+=step, row++) for (let x=x0+(row%2?step/2:0); x<x1+step; x+=step){
+    const s = size(x,y); if (s > .6) { c.beginPath(); c.arc(x,y,s,0,7); c.fill(); } }
+}
+function star(c,x,y,r,color,stroke){
+  c.beginPath(); for (let i=0;i<10;i++){ const a=-Math.PI/2+i*Math.PI/5, rr=i%2? r*.45 : r; c.lineTo(x+Math.cos(a)*rr, y+Math.sin(a)*rr); }
+  c.closePath(); if (stroke){ c.strokeStyle=stroke; c.lineWidth=r*.22; c.lineJoin='round'; c.stroke(); } c.fillStyle=color; c.fill();
+}
+
+/* 自己上传的底图 */
+const IMGS = {};
+async function registerImage(rec){
+  const bmp = await createImageBitmap(rec.blob);
+  const t = document.createElement('canvas'); t.width = t.height = 24; const x = t.getContext('2d'); x.drawImage(bmp,0,0,24,24);
+  const d = x.getImageData(0,0,24,24).data; let L = 0;
+  for (let i=0;i<d.length;i+=4) L += .2126*d[i] + .7152*d[i+1] + .0722*d[i+2];
+  const dark = L/(d.length/4*255) < .45;
+  IMGS['img:'+rec.id] = {id:'img:'+rec.id, dbId:rec.id, name:'我的底图', image:true, base:'#ffffff',
+    text: dark ? '#ffffff' : '#2b2620', accent:'#ffd84d',
+    bg(c,W,H){ const sc = Math.max(W/bmp.width, H/bmp.height), w = bmp.width*sc, h = bmp.height*sc;
+      c.fillStyle = '#fff'; c.fillRect(0,0,W,H); c.drawImage(bmp,(W-w)/2,(H-h)/2,w,h); }};
+}
 const BG_COLORS = [null,'#ffffff','#f6efe0','#fff1a6','#ffe3e8','#e0ecff','#e5ecd8','#ece4f7','#2f3a4a','#1d1e21'];
 function luminance(hex){
   const n = parseInt(hex.slice(1),16), f = v => { v/=255; return v<=.03928 ? v/12.92 : ((v+.055)/1.055)**2.4; };
@@ -280,13 +380,13 @@ function luminance(hex){
 /* 文字颜色：选了"跟随"时，底色太深就自动换浅色字，太浅就换深色字 */
 function textColorFor(st, tpl){
   if (st.color) return st.color;
-  if (!st.bg) return tpl.text;
+  if (!st.bg || tpl.image) return tpl.text;
   const bgDark = luminance(st.bg) < .2, txtDark = luminance(tpl.text) < .2;
   if (bgDark && txtDark) return '#f2ede4';
   if (!bgDark && !txtDark) return '#2b2620';
   return tpl.text;
 }
-const tplById = id => TPLS.find(t=>t.id===id) || TPLS[0];
+const tplById = id => TPLS.find(t=>t.id===id) || IMGS[id] || TPLS[0];
 
 /* ---------- 状态（会记在浏览器里） ---------- */
 const DEFAULTS = {
@@ -348,7 +448,7 @@ function wrap(ctx, text, maxW, indentW){
 
 function layout(st, W, H){
   const tpl = tplById(st.tpl);
-  const pad = {l:100, r:100, t: tpl.top || 150, b:130};
+  const pad = {l: tpl.left || 100, r:100, t: tpl.top || 150, b: tpl.bottom || 130};
   const cw = W - pad.l - pad.r, avail = H - pad.t - pad.b;
   const fs = st.fontSize, lh = fs * st.lineHeight;
   const tfs = st.titleSize, tlh = tfs * 1.35;
@@ -419,15 +519,19 @@ function drawPage(ctx, st, W, H, L, pi){
   const tcolor = st.titleColor || color, mark = st.markColor || tpl.accent;
   const ul = hexA(st.ulColor || mark, tpl.id === 'night' && !st.ulColor && !st.markColor ? .55 : .6);
   const {pad, cw, fs, lh, tfs, tlh} = L, page = L.pages[pi];
-  tpl.bg(ctx, W, H, st.bg || tpl.base, !!st.bg);
+  tpl.bg(ctx, W, H, (!tpl.image && st.bg) || tpl.base, !!st.bg && !tpl.image);
   ctx.textBaseline = 'middle';
 
   // 横线本：在每一行字下面画线，并一路画到底
   if (tpl.ruled) {
     ctx.fillStyle = tpl.ruled;
     let lastY = pad.t;
-    for (const it of page) if (it.kind === 'body') { const y = pad.t + it.y + lh/2 + fs*0.68; ctx.fillRect(40, y, W-80, 2); lastY = y; }
-    for (let y = lastY + lh; y < H - 110; y += lh) ctx.fillRect(40, y, W-80, 2);
+    const lx = tpl.ruledFull ? 0 : 40, lw = tpl.ruledFull ? W : W-80;
+    let firstY = null;
+    for (const it of page) if (it.kind === 'body') { const y = pad.t + it.y + lh/2 + fs*0.68; ctx.fillRect(lx, y, lw, 2); lastY = y; if (firstY === null) firstY = y; }
+    if (firstY === null) firstY = lastY = pad.t + lh;
+    for (let y = lastY + lh; y < H - (tpl.ruledFull ? 20 : 110); y += lh) ctx.fillRect(lx, y, lw, 2);
+    if (tpl.ruledFull) for (let y = firstY - lh; y > 20; y -= lh) if (!page.some(it => it.kind === 'title' && y > pad.t + it.y && y < pad.t + it.y + tlh)) ctx.fillRect(lx, y, lw, 2);
   }
 
   for (const it of page) {
@@ -454,7 +558,7 @@ function drawPage(ctx, st, W, H, L, pi){
   const total = L.pages.length, ffs = Math.round(Math.max(26, fs * 0.56));
   ctx.font = fontStr(400, ffs, st.font);
   ctx.fillStyle = hexA(color.length === 7 ? color : '#000000', .55);
-  const fy = H - 72;
+  const fy = H - (tpl.foot || 72);
   const right = [];
   if (st.showDate) { const d = new Date(); right.push(`${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`); }
   if (total > 1) right.push(`${pi+1}/${total}`);
@@ -490,7 +594,7 @@ function seg(el, opts, key){
 function buildTplThumbs(){
   const box = $('tpls'); box.innerHTML = '';
   const sample = {...st, title:'标题', body:'把喜欢的文字\n做成好看的图片', marker:true, showDate:false, fontSize:64, titleSize:90, ratio:'3:4', color:null, bg:null, align:'left', indent:false};
-  for (const t of TPLS) {
+  for (const t of [...TPLS, ...Object.values(IMGS)]) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'tpl' + (st.tpl === t.id ? ' on' : '');
     const c = document.createElement('canvas'); c.width = 216; c.height = 288;
     const ctx = c.getContext('2d'); ctx.scale(0.2, 0.2);
@@ -498,9 +602,44 @@ function buildTplThumbs(){
     drawPage(ctx, s, 1080, 1440, layout(s, 1080, 1440), 0);
     b.appendChild(c); b.append(t.name);
     b.onclick = () => { st.tpl = t.id; box.querySelectorAll('.tpl').forEach(x=>x.classList.remove('on')); b.classList.add('on'); update(); };
+    if (t.image) {
+      const x = document.createElement('span'); x.className = 'x'; x.textContent = '✕'; x.title = '删除这张底图';
+      x.onclick = async e => {
+        e.stopPropagation();
+        if (!confirm('删除这张底图？')) return;
+        await DB.del(t.dbId, 'images').catch(()=>{});
+        delete IMGS[t.id]; if (st.tpl === t.id) st.tpl = 'cream';
+        buildTplThumbs(); update();
+      };
+      b.appendChild(x);
+    }
     box.appendChild(b);
   }
+  const add = document.createElement('button'); add.type = 'button'; add.className = 'tpl add';
+  add.innerHTML = '<div class="box">＋</div>上传底图';
+  add.onclick = () => $('bgFile').click();
+  box.appendChild(add);
 }
+$('bgFile').onchange = async e => {
+  const file = e.target.files[0]; e.target.value = '';
+  if (!file) return;
+  const tip = t => $('bgStatus').textContent = t || '';
+  tip('正在读取图片…');
+  try {
+    let bmp = await createImageBitmap(file), blob = file;
+    const max = 2400, sc = Math.min(1, max / Math.max(bmp.width, bmp.height));
+    if (sc < 1 || file.size > 3e6) {                       // 太大的图先缩小，存起来比较省空间
+      const c = document.createElement('canvas'); c.width = Math.round(bmp.width*sc); c.height = Math.round(bmp.height*sc);
+      c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+      blob = await new Promise(r => c.toBlob(r, 'image/jpeg', .92));
+    }
+    const rec = {id: Date.now(), blob};
+    await registerImage(rec);
+    let msg = '已加入底图，下次打开还在（只存在这台手机／电脑里）';
+    try { await DB.put(rec, 'images'); } catch(err){ msg = '已加入底图（这个浏览器不让保存，关掉网页后要重新上传）'; }
+    st.tpl = 'img:' + rec.id; buildTplThumbs(); update(); tip(msg);
+  } catch(err) { tip('这个文件无法读取，请换一张 JPG 或 PNG 图片'); }
+};
 
 /* 颜色圆点：key = 'color'（文字）或 'bg'（底色）；最后一个是自订调色盘 */
 function buildSwatches(boxId, list, key, autoTitle){
@@ -687,6 +826,8 @@ seg($('align'), ALIGNS, 'align');
 buildAllSwatches();
 (async () => {
   try { for (const rec of await DB.all()) registerCustom(rec); } catch(e){}
+  try { for (const rec of await DB.all('images')) await registerImage(rec).catch(()=>{}); } catch(e){}
+  if (st.tpl.startsWith('img:') && !IMGS[st.tpl]) st.tpl = 'cream';
   if (!FONTS[st.font]) st.font = 'sans';
   if (st.titleFont && !FONTS[st.titleFont]) st.titleFont = '';
   buildFonts();
