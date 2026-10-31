@@ -395,7 +395,7 @@ function drawLine(ctx, line, x0, yMid, maxW, align, fs, ulColor){
   for (const t of line.toks) { xs.push(cx); cx += t.w + gap; }
   if (ulColor) {                                    // 先画马克笔再画字
     const fill = ctx.fillStyle; ctx.fillStyle = ulColor;
-    const th = fs * 0.42, uy = yMid + fs * 0.08, ext = fs * 0.08;
+    const th = fs * 1.12, uy = yMid - fs * 0.56, ext = fs * 0.1;     // 整个字都盖住
     for (let i = 0; i < line.toks.length; i++) {
       if (!line.toks[i].em) continue;
       let j = i; while (j + 1 < line.toks.length && line.toks[j+1].em) j++;
