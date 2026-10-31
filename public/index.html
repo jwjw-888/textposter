@@ -52,7 +52,7 @@
   .sub{font-size:13px;font-weight:600;color:var(--accent);margin:16px 0 2px;padding-top:12px;border-top:1px dashed var(--line);letter-spacing:1px}
   .tools{display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap}
   .tools button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 12px;font:14px var(--sans);color:var(--ink);cursor:pointer}
-  .tools button u{text-decoration-thickness:2px;text-underline-offset:3px;text-decoration-color:var(--accent)}
+  .tools button .hl{background:linear-gradient(transparent 55%,#ffd84d 55%,#ffd84d 92%,transparent 92%)}
   .tools small{font-size:12px;color:var(--muted)}
   .fstatus{font-size:12px;color:var(--muted);margin:-4px 0 0 72px;min-height:16px}
   .check{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;user-select:none}
@@ -107,7 +107,7 @@
       <label class="f" for="body" style="margin-top:12px">正文</label>
       <textarea id="body" placeholder="在这里输入或粘贴文字，换行会保留；空一行就是段落间距。字多了会自动分成好几张。"></textarea>
       <div class="tools">
-        <button type="button" id="ulBtn"><u>底线</u> 强调</button>
+        <button type="button" id="ulBtn"><span class="hl">马克笔</span> 强调</button>
         <small id="ulTip">先选取正文里的字再按；再按一次可取消</small>
         <span class="count" id="count" style="margin:0 0 0 auto">0 字</span>
       </div>
@@ -137,7 +137,7 @@
       <div class="row"><span>字号</span><input type="range" id="fontSize" min="34" max="84" step="1"><b class="val" id="fontSizeV"></b></div>
       <div class="row"><span>行距</span><input type="range" id="lineHeight" min="1.3" max="2.4" step="0.05"><b class="val" id="lineHeightV"></b></div>
       <div class="row"><span>颜色</span><div class="swatches" id="colors"></div></div>
-      <div class="row"><span>底线</span><div class="swatches" id="ucolors"></div></div>
+      <div class="row"><span>马克笔</span><div class="swatches" id="ucolors"></div></div>
       <div class="checks">
         <label class="check"><input type="checkbox" id="indent">首行缩进</label>
         <label class="check"><input type="checkbox" id="marker">标题马克笔</label>
@@ -213,7 +213,7 @@ const RATIOS = { '3:4':[1080,1440], '1:1':[1080,1080], '9:16':[1080,1920] };
 const ALIGNS = { justify:'两端', left:'靠左', center:'居中' };
 const COLORS = [null,'#2b2620','#5b3a29','#ffffff','#b23a3a','#2f4f86'];
 const MARK_COLORS = [null,'#ffd84d','#ffb3b3','#a8e0cf','#b5ccff','#e2c39a','#d6c0ff'];
-const UL_COLORS = [null,'#e2553a','#f2b600','#3a7bd5','#2f9e6e','#2b2620'];
+const UL_COLORS = [null,'#ffd84d','#ffb3b3','#a8e0cf','#b5ccff','#e2c39a','#d6c0ff'];
 
 /* 简单的固定随机数，让纸纹每次都一样 */
 function rng(seed){ return () => (seed = (seed*16807) % 2147483647) / 2147483647; }
@@ -378,14 +378,14 @@ function drawLine(ctx, line, x0, yMid, maxW, align, fs, ulColor){
   }
   const xs = []; let cx = x;
   for (const t of line.toks) { xs.push(cx); cx += t.w + gap; }
-  if (ulColor) {                                    // 先画底线再画字
+  if (ulColor) {                                    // 先画马克笔再画字
     const fill = ctx.fillStyle; ctx.fillStyle = ulColor;
-    const th = Math.max(4, fs * 0.1), uy = yMid + fs * 0.55;
+    const th = fs * 0.42, uy = yMid + fs * 0.08, ext = fs * 0.08;
     for (let i = 0; i < line.toks.length; i++) {
       if (!line.toks[i].em) continue;
       let j = i; while (j + 1 < line.toks.length && line.toks[j+1].em) j++;
       while (j > i && /^\s+$/.test(line.toks[j].t)) j--;
-      ctx.fillRect(xs[i], uy, xs[j] + line.toks[j].w - xs[i], th);
+      ctx.fillRect(xs[i] - ext, uy, xs[j] + line.toks[j].w - xs[i] + ext*2, th);
       i = j;
     }
     ctx.fillStyle = fill;
@@ -402,7 +402,7 @@ function hexA(hex, a){
 function drawPage(ctx, st, W, H, L, pi){
   const tpl = tplById(st.tpl), color = textColorFor(st, tpl);
   const tcolor = st.titleColor || color, mark = st.markColor || tpl.accent;
-  const ul = st.ulColor || (st.markColor ? hexA(st.markColor, .95) : hexA(tpl.accent, .95));
+  const ul = hexA(st.ulColor || mark, tpl.id === 'night' && !st.ulColor && !st.markColor ? .55 : .6);
   const {pad, cw, fs, lh, tfs, tlh} = L, page = L.pages[pi];
   tpl.bg(ctx, W, H, st.bg || tpl.base, !!st.bg);
   ctx.textBaseline = 'middle';
@@ -509,7 +509,7 @@ function buildAllSwatches(){
   buildSwatches('colors', COLORS, 'color', '跟随模板（底色深时自动用浅色字）');
   buildSwatches('tcolors', COLORS, 'titleColor', '跟正文同色');
   buildSwatches('mcolors', MARK_COLORS, 'markColor', '跟随模板');
-  buildSwatches('ucolors', UL_COLORS, 'ulColor', '跟标示笔同色');
+  buildSwatches('ucolors', UL_COLORS, 'ulColor', '跟标题的标示笔同色');
   buildSwatches('bgColors', BG_COLORS, 'bg', '模板原本的底色');
 }
 
@@ -610,7 +610,7 @@ $('modal').onclick = e => { if (e.target === $('modal')) $('modal').classList.re
 $('modalDl').onclick = () => download(modalIdx);
 $('dlAll').onclick = async () => { for (let i = 0; i < canvases.length; i++) await download(i); };
 
-/* 底线强调按钮：在选取的文字前后加 / 去掉 __ */
+/* 马克笔强调按钮：在选取的文字前后加 / 去掉 __ */
 $('ulBtn').addEventListener('pointerdown', e => e.preventDefault());   // 不让文字框失去选取
 $('ulBtn').onclick = () => {
   const ta = $('body'), v = ta.value; let a = ta.selectionStart, b = ta.selectionEnd;
