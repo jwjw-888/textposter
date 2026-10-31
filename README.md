@@ -15,3 +15,5 @@
 网站文件都在 `public/`，用 Cloudflare Workers 发布（设定在 `wrangler.jsonc`）。
 - 标题可单独设定字体、字号、颜色、标示笔颜色
 - 正文选取文字后按「马克笔 强调」可加马克笔底色（文字前后会加上 `__`），颜色可调
+- 可安装成手机 App（PWA）：Android 按网页上的「安装 App」，iPhone 用 Safari 分享 →「加入主画面」；装好后没网络也能用
+- 原始 icon 图档：`icon-original.png`（各尺寸 icon 在 `public/icons/`）

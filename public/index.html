@@ -6,7 +6,13 @@
 <title>文字海报</title>
 <meta name="description" content="输入文字，一键生成小红书风格的文字图片">
 <meta name="theme-color" content="#f4efe6">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='8' y='4' width='48' height='56' rx='6' fill='%23f6efe0' stroke='%23c9a46a' stroke-width='3'/%3E%3Cpath d='M18 20h28M18 30h28M18 40h18' stroke='%233b3226' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="icon" type="image/png" href="/icons/favicon-64.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="文字海报">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>
   :root{
     --bg:#f4efe6; --panel:#fffdf9; --ink:#2d2620; --muted:#8a7f72; --line:#e6ddcf;
@@ -17,6 +23,9 @@
   html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-text-size-adjust:100%}
   header{padding:22px 20px 6px;max-width:1240px;margin:0 auto;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
   header h1{margin:0;font-size:24px;letter-spacing:2px}
+  .install{margin-left:auto;align-self:center;border:1px solid var(--accent);color:var(--accent);background:#fff;border-radius:999px;padding:5px 14px;font:600 13px var(--sans);cursor:pointer}
+  .ios-tip{max-width:1240px;margin:4px auto 0;padding:8px 36px 8px 14px;background:var(--accent-soft);color:var(--ink);font-size:13px;border-radius:10px;position:relative}
+  .ios-tip button{position:absolute;right:6px;top:4px;border:0;background:none;font-size:14px;color:var(--muted);cursor:pointer;padding:4px 6px}
   header p{margin:0;color:var(--muted);font-size:14px}
   main{max-width:1240px;margin:0 auto;padding:12px 16px 40px;display:grid;grid-template-columns:400px 1fr;gap:20px;align-items:start}
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
@@ -75,7 +84,8 @@
   /* 手机：上面固定预览、下面设定各自滑动 */
   @media (max-width:860px){
     html,body{height:100%;overflow:hidden}
-    body{display:flex;flex-direction:column;height:100dvh}
+    body{display:flex;flex-direction:column;height:100dvh;padding-top:env(safe-area-inset-top)}
+    .ios-tip{flex:none;margin:0 12px 6px}
     header{flex:none;padding:10px 16px 4px;margin:0;width:100%}
     header h1{font-size:18px}
     header p{display:none}
@@ -89,7 +99,7 @@
     .page{width:auto;height:100%}
     .page canvas{width:auto;height:100%}
     .hint{display:none}
-    .controls{order:1;flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:12px 12px 40px}
+    .controls{order:1;flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:12px 12px calc(40px + env(safe-area-inset-bottom))}
   }
 </style>
 </head>
@@ -97,7 +107,12 @@
 <header>
   <h1>文字海报</h1>
   <p>打字，选样式，存成图片</p>
+  <button type="button" class="install" id="installBtn" hidden>安装 App</button>
 </header>
+<div class="ios-tip" id="iosTip" hidden>
+  在 iPhone 上安装：点 Safari 下方的 <b>分享</b> 按钮 → <b>加入主画面</b>
+  <button type="button" id="iosTipClose" aria-label="关闭">✕</button>
+</div>
 
 <main>
   <div class="controls">
@@ -158,9 +173,9 @@
 
 <div class="modal" id="modal">
   <img id="modalImg" alt="海报预览">
-  <p>手机：长按图片保存到相册　电脑：点“下载”</p>
+  <p>手机：长按图片，或按「存图」用分享选单存到相册</p>
   <div class="bar">
-    <button class="btn" id="modalDl">下载这张</button>
+    <button class="btn" id="modalDl">存这张</button>
     <button class="btn ghost" id="modalClose">关闭</button>
   </div>
 </div>
@@ -588,7 +603,7 @@ function render(){
   const chars = [...(st.title + st.body).replace(/__|\s/g,'')].length;
   $('count').textContent = `${chars} 字`;
   $('pvInfo').textContent = `共 ${canvases.length} 张 · ${RATIOS[st.ratio].join('×')}`;
-  $('dlAll').textContent = canvases.length > 1 ? `下载全部 ${canvases.length} 张` : '下载图片';
+  $('dlAll').textContent = isTouch ? (canvases.length > 1 ? `存全部 ${canvases.length} 张` : '存图') : (canvases.length > 1 ? `下载全部 ${canvases.length} 张` : '下载图片');
 }
 
 function fileName(i){
@@ -607,8 +622,21 @@ let modalIdx = 0;
 function openModal(i){ modalIdx = i; $('modalImg').src = canvases[i].toDataURL('image/png'); $('modal').classList.add('show'); }
 $('modalClose').onclick = () => $('modal').classList.remove('show');
 $('modal').onclick = e => { if (e.target === $('modal')) $('modal').classList.remove('show'); };
-$('modalDl').onclick = () => download(modalIdx);
-$('dlAll').onclick = async () => { for (let i = 0; i < canvases.length; i++) await download(i); };
+/* 手机上用系统分享表单存图（可选「储存影像」存到相册）；不支持时改成一般下载 */
+const isTouch = matchMedia('(pointer:coarse)').matches;
+const toFile = i => new Promise(res => canvases[i].toBlob(b => res(new File([b], fileName(i), {type:'image/png'})), 'image/png'));
+async function saveImages(list){
+  if (isTouch && navigator.canShare) {
+    const files = await Promise.all(list.map(toFile));
+    if (navigator.canShare({files})) {
+      try { await navigator.share({files}); return; }
+      catch (e) { if (e.name === 'AbortError') return; }
+    }
+  }
+  for (const i of list) await download(i);
+}
+$('modalDl').onclick = () => saveImages([modalIdx]);
+$('dlAll').onclick = () => saveImages(canvases.map((_, i) => i));
 
 /* 马克笔强调按钮：在选取的文字前后加 / 去掉 __ */
 $('ulBtn').addEventListener('pointerdown', e => e.preventDefault());   // 不让文字框失去选取
@@ -631,6 +659,20 @@ $('ulBtn').onclick = () => {
   $('ulTip').textContent = '先选取正文里的字再按；再按一次可取消';
   st.body = out; update();
 };
+
+/* App 安装 */
+const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+let deferredPrompt = null;
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; $('installBtn').hidden = false; });
+$('installBtn').onclick = async () => {
+  if (deferredPrompt) { deferredPrompt.prompt(); await deferredPrompt.userChoice.catch(()=>{}); deferredPrompt = null; $('installBtn').hidden = true; }
+  else $('iosTip').hidden = false;
+};
+addEventListener('appinstalled', () => { $('installBtn').hidden = true; });
+const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+if (isIOS && !standalone) $('installBtn').hidden = false;
+$('iosTipClose').onclick = () => { $('iosTip').hidden = true; };
+if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(()=>{}));
 
 /* 绑定输入 */
 for (const k of ['title','body']) { $(k).value = st[k]; $(k).addEventListener('input', e => { st[k] = e.target.value; update(); }); }
