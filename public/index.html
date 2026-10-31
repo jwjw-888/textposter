@@ -49,6 +49,11 @@
   .seg button .x{margin-left:6px;opacity:.55;font-size:12px}
   .seg button .x:hover{opacity:1}
   .seg button.add{border-style:dashed;color:var(--muted)}
+  .sub{font-size:13px;font-weight:600;color:var(--accent);margin:16px 0 2px;padding-top:12px;border-top:1px dashed var(--line);letter-spacing:1px}
+  .tools{display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap}
+  .tools button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 12px;font:14px var(--sans);color:var(--ink);cursor:pointer}
+  .tools button u{text-decoration-thickness:2px;text-underline-offset:3px;text-decoration-color:var(--accent)}
+  .tools small{font-size:12px;color:var(--muted)}
   .fstatus{font-size:12px;color:var(--muted);margin:-4px 0 0 72px;min-height:16px}
   .check{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;user-select:none}
   .check input{width:18px;height:18px;accent-color:var(--accent)}
@@ -101,7 +106,11 @@
       <input type="text" id="title" placeholder="比如：今天想说的话" maxlength="60">
       <label class="f" for="body" style="margin-top:12px">正文</label>
       <textarea id="body" placeholder="在这里输入或粘贴文字，换行会保留；空一行就是段落间距。字多了会自动分成好几张。"></textarea>
-      <div class="count" id="count">0 字</div>
+      <div class="tools">
+        <button type="button" id="ulBtn"><u>底线</u> 强调</button>
+        <small id="ulTip">先选取正文里的字再按；再按一次可取消</small>
+        <span class="count" id="count" style="margin:0 0 0 auto">0 字</span>
+      </div>
     </section>
 
     <section class="panel" id="c-tpl">
@@ -113,14 +122,22 @@
     <section class="panel" id="c-style">
       <h2 class="section-title">文字样式</h2>
       <div class="row"><span>尺寸</span><div class="seg" id="ratio"></div></div>
+      <div class="row"><span>对齐</span><div class="seg" id="align"></div></div>
+
+      <h3 class="sub">标题</h3>
+      <div class="row" style="align-items:flex-start"><span style="padding-top:6px">字体</span><div class="seg" id="tfont"></div></div>
+      <div class="row"><span>字号</span><input type="range" id="titleSize" min="40" max="140" step="1"><b class="val" id="titleSizeV"></b></div>
+      <div class="row"><span>颜色</span><div class="swatches" id="tcolors"></div></div>
+      <div class="row"><span>标示笔</span><div class="swatches" id="mcolors"></div></div>
+
+      <h3 class="sub">正文</h3>
       <div class="row" style="align-items:flex-start"><span style="padding-top:6px">字体</span><div class="seg" id="font"></div></div>
       <div class="fstatus" id="fstatus"></div>
       <input type="file" id="fontFile" accept=".ttf,.otf,.woff,.woff2" hidden>
-      <div class="row"><span>对齐</span><div class="seg" id="align"></div></div>
-      <div class="row"><span>标题字号</span><input type="range" id="titleSize" min="40" max="140" step="1"><b class="val" id="titleSizeV"></b></div>
-      <div class="row"><span>正文字号</span><input type="range" id="fontSize" min="34" max="84" step="1"><b class="val" id="fontSizeV"></b></div>
+      <div class="row"><span>字号</span><input type="range" id="fontSize" min="34" max="84" step="1"><b class="val" id="fontSizeV"></b></div>
       <div class="row"><span>行距</span><input type="range" id="lineHeight" min="1.3" max="2.4" step="0.05"><b class="val" id="lineHeightV"></b></div>
-      <div class="row"><span>文字颜色</span><div class="swatches" id="colors"></div></div>
+      <div class="row"><span>颜色</span><div class="swatches" id="colors"></div></div>
+      <div class="row"><span>底线</span><div class="swatches" id="ucolors"></div></div>
       <div class="checks">
         <label class="check"><input type="checkbox" id="indent">首行缩进</label>
         <label class="check"><input type="checkbox" id="marker">标题马克笔</label>
@@ -195,6 +212,8 @@ function registerCustom(rec){
 const RATIOS = { '3:4':[1080,1440], '1:1':[1080,1080], '9:16':[1080,1920] };
 const ALIGNS = { justify:'两端', left:'靠左', center:'居中' };
 const COLORS = [null,'#2b2620','#5b3a29','#ffffff','#b23a3a','#2f4f86'];
+const MARK_COLORS = [null,'#ffd84d','#ffb3b3','#a8e0cf','#b5ccff','#e2c39a','#d6c0ff'];
+const UL_COLORS = [null,'#e2553a','#f2b600','#3a7bd5','#2f9e6e','#2b2620'];
 
 /* 简单的固定随机数，让纸纹每次都一样 */
 function rng(seed){ return () => (seed = (seed*16807) % 2147483647) / 2147483647; }
@@ -258,7 +277,7 @@ const tplById = id => TPLS.find(t=>t.id===id) || TPLS[0];
 const DEFAULTS = {
   title:'把日子过成喜欢的样子',
   body:'不用急着变成别人期待的样子。\n\n慢慢来，按自己的节奏，把每一件小事做好：早上给自己泡一杯热茶，下班路上看一眼晚霞，睡前写下今天值得开心的三件事。\n\n生活不会一下子变好，但会在这些小小的坚持里，一点一点亮起来。',
-  tpl:'cream', font:'sans', ratio:'3:4', align:'justify', fontSize:50, titleSize:72, lineHeight:1.8,
+  tpl:'cream', font:'sans', ratio:'3:4', align:'justify', fontSize:50, titleSize:72, lineHeight:1.8, titleFont:'', titleColor:null, markColor:null, ulColor:null,
   color:null, bg:null, indent:false, marker:true, showDate:false,
 };
 let st = {...DEFAULTS};
@@ -273,6 +292,7 @@ const TOKEN_RE = /[A-Za-z0-9][A-Za-z0-9'’\-.,:%/@#_&+]*|\p{Extended_Pictograph
 const mctx = document.createElement('canvas').getContext('2d');
 /* 附带/上传的字体只有一种粗细，硬加粗会糊掉，所以标题保持原样 */
 const titleWeight = font => (FONTS[font] && FONTS[font].family) ? 400 : 700;
+const titleFontOf = st => (st.titleFont && FONTS[st.titleFont]) ? st.titleFont : st.font;
 const fontStr = (weight,size,font) => `${weight} ${size}px ${(FONTS[font]||FONTS.sans).stack}`;
 
 function wrap(ctx, text, maxW, indentW){
@@ -281,12 +301,17 @@ function wrap(ctx, text, maxW, indentW){
     while (cur.length && /^\s+$/.test(cur[cur.length-1].t)) { curW -= cur.pop().w; }
     lines.push({toks:cur, indent: lines.length===0 ? indentW : 0, last});
   };
-  const toks = [];
-  for (const t of (text.match(TOKEN_RE) || [])) {
-    const w = ctx.measureText(t).width;
-    if (w > maxW * 0.9 && t.length > 1) { for (const ch of t) toks.push({t:ch, w:ctx.measureText(ch).width}); }
-    else toks.push({t, w});
-  }
+  // __文字__ = 底线强调
+  const toks = [], parts = text.split('__');
+  parts.forEach((seg, i) => {
+    const em = i % 2 === 1 && i < parts.length - 1;
+    if (i % 2 === 1 && !em) seg = '__' + seg;          // 没有成对的 __ 就照原样显示
+    for (const t of (seg.match(TOKEN_RE) || [])) {
+      const w = ctx.measureText(t).width;
+      if (w > maxW * 0.9 && t.length > 1) { for (const ch of t) toks.push({t:ch, w:ctx.measureText(ch).width, em}); }
+      else toks.push({t, w, em});
+    }
+  });
   for (const tok of toks) {
     const isSpace = /^\s+$/.test(tok.t);
     if (isSpace && cur.length === 0) continue;
@@ -316,7 +341,7 @@ function layout(st, W, H){
 
   const title = st.title.trim();
   if (title) {
-    mctx.font = fontStr(titleWeight(st.font), tfs, st.font);
+    mctx.font = fontStr(titleWeight(titleFontOf(st)), tfs, titleFontOf(st));
     for (const ln of wrap(mctx, title, cw, 0)) items.push({kind:'title', h:tlh, g:tfs, line:ln});
     items.push({kind:'space', h: Math.max(fs, tfs*0.6)});
   }
@@ -342,7 +367,7 @@ function layout(st, W, H){
   return {pages, pad, cw, fs, lh, tfs, tlh};
 }
 
-function drawLine(ctx, line, x0, yMid, maxW, align, fs){
+function drawLine(ctx, line, x0, yMid, maxW, align, fs, ulColor){
   const total = line.toks.reduce((s,t)=>s+t.w,0);
   const avail = maxW - line.indent;
   let x = x0 + line.indent, gap = 0;
@@ -351,7 +376,21 @@ function drawLine(ctx, line, x0, yMid, maxW, align, fs){
     gap = (avail - total) / (line.toks.length - 1);
     if (gap > fs * 0.5) gap = 0;            // 断行太早时就不硬撑开
   }
-  for (const t of line.toks) { ctx.fillText(t.t, x, yMid); x += t.w + gap; }
+  const xs = []; let cx = x;
+  for (const t of line.toks) { xs.push(cx); cx += t.w + gap; }
+  if (ulColor) {                                    // 先画底线再画字
+    const fill = ctx.fillStyle; ctx.fillStyle = ulColor;
+    const th = Math.max(4, fs * 0.1), uy = yMid + fs * 0.55;
+    for (let i = 0; i < line.toks.length; i++) {
+      if (!line.toks[i].em) continue;
+      let j = i; while (j + 1 < line.toks.length && line.toks[j+1].em) j++;
+      while (j > i && /^\s+$/.test(line.toks[j].t)) j--;
+      ctx.fillRect(xs[i], uy, xs[j] + line.toks[j].w - xs[i], th);
+      i = j;
+    }
+    ctx.fillStyle = fill;
+  }
+  line.toks.forEach((t, i) => ctx.fillText(t.t, xs[i], yMid));
   return {x0: align==='center' ? x0 + (maxW-total)/2 : x0 + line.indent, w: total + gap * Math.max(0,line.toks.length-1)};
 }
 
@@ -362,6 +401,8 @@ function hexA(hex, a){
 
 function drawPage(ctx, st, W, H, L, pi){
   const tpl = tplById(st.tpl), color = textColorFor(st, tpl);
+  const tcolor = st.titleColor || color, mark = st.markColor || tpl.accent;
+  const ul = st.ulColor || (st.markColor ? hexA(st.markColor, .95) : hexA(tpl.accent, .95));
   const {pad, cw, fs, lh, tfs, tlh} = L, page = L.pages[pi];
   tpl.bg(ctx, W, H, st.bg || tpl.base, !!st.bg);
   ctx.textBaseline = 'middle';
@@ -377,20 +418,20 @@ function drawPage(ctx, st, W, H, L, pi){
   for (const it of page) {
     const top = pad.t + it.y;
     if (it.kind === 'title') {
-      ctx.font = fontStr(titleWeight(st.font), tfs, st.font);
+      ctx.font = fontStr(titleWeight(titleFontOf(st)), tfs, titleFontOf(st));
       const align = st.align === 'center' ? 'center' : 'left';
       const total = it.line.toks.reduce((s,t)=>s+t.w,0);
       const x = align === 'center' ? pad.l + (cw-total)/2 : pad.l;
       if (st.marker && total > 0) {
-        ctx.fillStyle = hexA(tpl.accent, tpl.id === 'night' ? .55 : .6);
+        ctx.fillStyle = hexA(mark, tpl.id === 'night' && !st.markColor ? .55 : .6);
         ctx.fillRect(x - 6, top + tlh/2 + tfs*0.08, total + 12, tfs*0.42);
       }
-      ctx.fillStyle = color;
-      drawLine(ctx, it.line, pad.l, top + tlh/2, cw, align, tfs);
+      ctx.fillStyle = tcolor;
+      drawLine(ctx, it.line, pad.l, top + tlh/2, cw, align, tfs, ul);
     } else if (it.kind === 'body') {
       ctx.font = fontStr(400, fs, st.font);
       ctx.fillStyle = color;
-      drawLine(ctx, it.line, pad.l, top + lh/2, cw, st.align, fs);
+      drawLine(ctx, it.line, pad.l, top + lh/2, cw, st.align, fs, ul);
     }
   }
 
@@ -466,41 +507,51 @@ function buildSwatches(boxId, list, key, autoTitle){
 }
 function buildAllSwatches(){
   buildSwatches('colors', COLORS, 'color', '跟随模板（底色深时自动用浅色字）');
+  buildSwatches('tcolors', COLORS, 'titleColor', '跟正文同色');
+  buildSwatches('mcolors', MARK_COLORS, 'markColor', '跟随模板');
+  buildSwatches('ucolors', UL_COLORS, 'ulColor', '跟标示笔同色');
   buildSwatches('bgColors', BG_COLORS, 'bg', '模板原本的底色');
 }
 
 /* 字体按钮：内建 + 网站附带 + 自己上传的 */
 function fstatus(t){ $('fstatus').textContent = t || ''; }
-function buildFonts(){
-  const box = $('font'); box.innerHTML = '';
-  for (const [k, f] of Object.entries(FONTS)) {
-    const b = document.createElement('button'); b.type = 'button'; b.className = st.font === k ? 'on' : '';
+function buildFonts(){ buildFontRow('font', 'font'); buildFontRow('tfont', 'titleFont'); }
+function buildFontRow(boxId, key){
+  const box = $(boxId); box.innerHTML = '';
+  const entries = Object.entries(FONTS);
+  if (key === 'titleFont') entries.unshift(['', {name:'跟正文'}]);
+  for (const [k, f] of entries) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = st[key] === k ? 'on' : '';
     b.textContent = f.name;
-    if (f.custom) {
+    if (f.custom && key === 'font') {
       const x = document.createElement('span'); x.className = 'x'; x.textContent = '✕'; x.title = '删除这个字体';
       x.onclick = async e => {
         e.stopPropagation();
         if (!confirm(`删除字体「${f.name}」？`)) return;
         await DB.del(+k.slice(2)).catch(()=>{});
-        delete FONTS[k]; if (st.font === k) st.font = 'sans';
+        delete FONTS[k]; if (st.font === k) st.font = 'sans'; if (st.titleFont === k) st.titleFont = '';
         buildFonts(); buildTplThumbs(); update();
       };
       b.appendChild(x);
     }
-    b.onclick = () => selectFont(k);
+    b.onclick = () => selectFont(k, key);
     box.appendChild(b);
   }
-  const add = document.createElement('button'); add.type = 'button'; add.className = 'add'; add.textContent = '＋ 上传字体';
-  add.onclick = () => $('fontFile').click();
-  box.appendChild(add);
+  if (key === 'font') {
+    const add = document.createElement('button'); add.type = 'button'; add.className = 'add'; add.textContent = '＋ 上传字体';
+    add.onclick = () => $('fontFile').click();
+    box.appendChild(add);
+  }
 }
-async function selectFont(k){
-  st.font = k; buildFonts();
+async function selectFont(k, key = 'font'){
+  st[key] = k; buildFonts();
   const f = FONTS[k];
-  if (f.family && !f.ready) fstatus(`正在载入「${f.name}」…第一次会慢一点`);
-  try { await ensureFont(k); fstatus(''); }
-  catch(e){ fstatus(`「${f.name}」载入失败，请检查网络后再点一次`); }
-  if (st.font === k) { buildTplThumbs(); update(); }
+  if (f) {
+    if (f.family && !f.ready) fstatus(`正在载入「${f.name}」…第一次会慢一点`);
+    try { await ensureFont(k); fstatus(''); }
+    catch(e){ fstatus(`「${f.name}」载入失败，请检查网络后再点一次`); }
+  }
+  if (st[key] === k) { buildTplThumbs(); update(); }
 }
 $('fontFile').onchange = async e => {
   const file = e.target.files[0]; e.target.value = '';
@@ -521,7 +572,8 @@ $('fontFile').onchange = async e => {
 };
 
 let timer = 0;
-function update(){ clearTimeout(timer); timer = setTimeout(() => ensureFont(st.font).catch(()=>{}).then(render), 80); save(); }
+const loadFonts = () => Promise.all([st.font, titleFontOf(st)].map(k => ensureFont(k).catch(()=>{})));
+function update(){ clearTimeout(timer); timer = setTimeout(() => loadFonts().then(render), 80); save(); }
 
 function render(){
   canvases = renderAll(st);
@@ -533,14 +585,14 @@ function render(){
     d.onclick = () => openModal(i);
     pagesEl.appendChild(d);
   });
-  const chars = [...(st.title + st.body).replace(/\s/g,'')].length;
+  const chars = [...(st.title + st.body).replace(/__|\s/g,'')].length;
   $('count').textContent = `${chars} 字`;
   $('pvInfo').textContent = `共 ${canvases.length} 张 · ${RATIOS[st.ratio].join('×')}`;
   $('dlAll').textContent = canvases.length > 1 ? `下载全部 ${canvases.length} 张` : '下载图片';
 }
 
 function fileName(i){
-  const base = (st.title.trim() || st.body.trim().slice(0,12) || '文字海报').replace(/[\\/:*?"<>|\s]+/g,'');
+  const base = (st.title.trim() || st.body.replace(/__/g,'').trim().slice(0,12) || '文字海报').replace(/[\\/:*?"<>|\s]+/g,'');
   return canvases.length > 1 ? `${base}-${i+1}.png` : `${base}.png`;
 }
 function download(i){
@@ -558,6 +610,28 @@ $('modal').onclick = e => { if (e.target === $('modal')) $('modal').classList.re
 $('modalDl').onclick = () => download(modalIdx);
 $('dlAll').onclick = async () => { for (let i = 0; i < canvases.length; i++) await download(i); };
 
+/* 底线强调按钮：在选取的文字前后加 / 去掉 __ */
+$('ulBtn').addEventListener('pointerdown', e => e.preventDefault());   // 不让文字框失去选取
+$('ulBtn').onclick = () => {
+  const ta = $('body'), v = ta.value; let a = ta.selectionStart, b = ta.selectionEnd;
+  if (a === b) { $('ulTip').textContent = '请先在正文里选取要强调的字'; ta.focus(); return; }
+  let out, na, nb;
+  if (v.slice(a-2, a) === '__' && v.slice(b, b+2) === '__') {           // 已经有底线 → 取消
+    out = v.slice(0, a-2) + v.slice(a, b) + v.slice(b+2); na = a-2; nb = b-2;
+  } else {
+    const sel = v.slice(a, b);
+    if (/^__[\s\S]*__$/.test(sel) && sel.length > 4) { const t = sel.slice(2, -2); out = v.slice(0,a) + t + v.slice(b); na = a; nb = a + t.length; }
+    else {
+      const clean = sel.replace(/__/g, '');
+      const t = clean.split('\n').map(l => l.trim() ? '__' + l + '__' : l).join('\n');
+      out = v.slice(0,a) + t + v.slice(b); na = a + (t.startsWith('__') ? 2 : 0); nb = a + t.length - (t.endsWith('__') ? 2 : 0);
+    }
+  }
+  ta.value = out; ta.focus(); ta.setSelectionRange(na, nb);
+  $('ulTip').textContent = '先选取正文里的字再按；再按一次可取消';
+  st.body = out; update();
+};
+
 /* 绑定输入 */
 for (const k of ['title','body']) { $(k).value = st[k]; $(k).addEventListener('input', e => { st[k] = e.target.value; update(); }); }
 for (const k of ['indent','marker','showDate']) { $(k).checked = st[k]; $(k).addEventListener('change', e => { st[k] = e.target.checked; update(); }); }
@@ -572,8 +646,9 @@ buildAllSwatches();
 (async () => {
   try { for (const rec of await DB.all()) registerCustom(rec); } catch(e){}
   if (!FONTS[st.font]) st.font = 'sans';
+  if (st.titleFont && !FONTS[st.titleFont]) st.titleFont = '';
   buildFonts();
-  if (FONTS[st.font].family) { fstatus(`正在载入「${FONTS[st.font].name}」…`); await ensureFont(st.font).catch(()=>{}); fstatus(''); }
+  if (FONTS[st.font].family || st.titleFont) { fstatus('正在载入字体…'); await loadFonts(); fstatus(''); }
   buildTplThumbs();
   render();
 })();
