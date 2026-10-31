@@ -113,8 +113,6 @@
         <label class="check"><input type="checkbox" id="marker">标题马克笔</label>
         <label class="check"><input type="checkbox" id="showDate">显示日期</label>
       </div>
-      <label class="f" for="sign" style="margin-top:14px">署名 / 水印（显示在左下角）</label>
-      <input type="text" id="sign" placeholder="@你的昵称" maxlength="30">
     </section>
   </div>
 
@@ -248,7 +246,7 @@ const DEFAULTS = {
   title:'把日子过成喜欢的样子',
   body:'不用急着变成别人期待的样子。\n\n慢慢来，按自己的节奏，把每一件小事做好：早上给自己泡一杯热茶，下班路上看一眼晚霞，睡前写下今天值得开心的三件事。\n\n生活不会一下子变好，但会在这些小小的坚持里，一点一点亮起来。',
   tpl:'cream', font:'sans', ratio:'3:4', align:'justify', fontSize:50, titleSize:72, lineHeight:1.8,
-  color:null, bg:null, indent:false, marker:true, showDate:false, sign:'',
+  color:null, bg:null, indent:false, marker:true, showDate:false,
 };
 let st = {...DEFAULTS};
 try { const s = JSON.parse(localStorage.getItem('textposter') || 'null'); if (s) st = {...DEFAULTS, ...s}; } catch(e){}
@@ -388,7 +386,6 @@ function drawPage(ctx, st, W, H, L, pi){
   ctx.font = fontStr(400, ffs, st.font);
   ctx.fillStyle = hexA(color.length === 7 ? color : '#000000', .55);
   const fy = H - 72;
-  if (st.sign.trim()) { ctx.textAlign = 'left'; ctx.fillText(st.sign.trim(), pad.l, fy); }
   const right = [];
   if (st.showDate) { const d = new Date(); right.push(`${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`); }
   if (total > 1) right.push(`${pi+1}/${total}`);
@@ -423,7 +420,7 @@ function seg(el, opts, key){
 
 function buildTplThumbs(){
   const box = $('tpls'); box.innerHTML = '';
-  const sample = {...st, title:'标题', body:'把喜欢的文字\n做成好看的图片', marker:true, sign:'', showDate:false, fontSize:64, titleSize:90, ratio:'3:4', color:null, bg:null, align:'left', indent:false};
+  const sample = {...st, title:'标题', body:'把喜欢的文字\n做成好看的图片', marker:true, showDate:false, fontSize:64, titleSize:90, ratio:'3:4', color:null, bg:null, align:'left', indent:false};
   for (const t of TPLS) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'tpl' + (st.tpl === t.id ? ' on' : '');
     const c = document.createElement('canvas'); c.width = 216; c.height = 288;
@@ -549,7 +546,7 @@ $('modalDl').onclick = () => download(modalIdx);
 $('dlAll').onclick = async () => { for (let i = 0; i < canvases.length; i++) await download(i); };
 
 /* 绑定输入 */
-for (const k of ['title','body','sign']) { $(k).value = st[k]; $(k).addEventListener('input', e => { st[k] = e.target.value; update(); }); }
+for (const k of ['title','body']) { $(k).value = st[k]; $(k).addEventListener('input', e => { st[k] = e.target.value; update(); }); }
 for (const k of ['indent','marker','showDate']) { $(k).checked = st[k]; $(k).addEventListener('change', e => { st[k] = e.target.checked; update(); }); }
 for (const k of ['titleSize','fontSize','lineHeight']) {
   const show = () => $(k+'V').textContent = k === 'lineHeight' ? (+st[k]).toFixed(2) : st[k];
