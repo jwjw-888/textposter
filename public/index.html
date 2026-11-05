@@ -531,13 +531,19 @@ function drawPage(ctx, st, W, H, L, pi){
   // 横线本：在每一行字下面画线，并一路画到底
   if (tpl.ruled) {
     ctx.fillStyle = tpl.ruled;
-    let lastY = pad.t;
     const lx = tpl.ruledFull ? 0 : 40, lw = tpl.ruledFull ? W : W-80;
-    let firstY = null;
-    for (const it of page) if (it.kind === 'body') { const y = pad.t + it.y + lh/2 + fs*0.68; ctx.fillRect(lx, y, lw, 2); lastY = y; if (firstY === null) firstY = y; }
-    if (firstY === null) firstY = lastY = pad.t + lh;
+    // 每一行字（标题和正文）底下都有一条线，标题那几行不会空出一大块
+    const ys = [];
+    for (const it of page) {
+      if (it.kind === 'body')  ys.push(pad.t + it.y + lh/2 + fs*0.68);
+      if (it.kind === 'title') ys.push(pad.t + it.y + tlh/2 + tfs*0.62);
+    }
+    if (!ys.length) ys.push(pad.t + lh);
+    for (const y of ys) ctx.fillRect(lx, y, lw, 2);
+    const lastY = ys[ys.length-1], firstY = ys[0];
     for (let y = lastY + lh; y < H - (tpl.ruledFull ? 20 : 110); y += lh) ctx.fillRect(lx, y, lw, 2);
-    if (tpl.ruledFull) for (let y = firstY - lh; y > 20; y -= lh) if (!page.some(it => it.kind === 'title' && y > pad.t + it.y && y < pad.t + it.y + tlh)) ctx.fillRect(lx, y, lw, 2);
+    const cutsTitle = y => page.some(it => it.kind === 'title' && y > pad.t + it.y + tlh/2 - tfs*0.6 && y < pad.t + it.y + tlh/2 + tfs*0.6);
+    if (tpl.ruledFull) for (let y = firstY - lh; y > 20; y -= lh) if (!cutsTitle(y)) ctx.fillRect(lx, y, lw, 2);
   }
 
   for (const it of page) {
