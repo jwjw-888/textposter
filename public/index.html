@@ -46,7 +46,7 @@
   .tpl.on{color:var(--ink);font-weight:600}
   .tpl.on canvas{outline:2px solid var(--accent);outline-offset:2px}
   .row{display:flex;align-items:center;gap:10px;margin:10px 0}
-  .row>span{width:62px;flex:none;font-size:13px;color:var(--muted)}
+  .row>span{width:66px;flex:none;font-size:13px;color:var(--muted)}
   .seg{display:flex;flex-wrap:wrap;gap:6px}
   .seg button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;font:13px var(--sans);color:var(--ink);cursor:pointer}
   .seg button.on{background:var(--ink);border-color:var(--ink);color:#fff}
@@ -147,6 +147,7 @@
       <h3 class="sub">标题</h3>
       <div class="row" style="align-items:flex-start"><span style="padding-top:6px">字体</span><div class="seg" id="tfont"></div></div>
       <div class="row"><span>字号</span><input type="range" id="titleSize" min="40" max="140" step="1"><b class="val" id="titleSizeV"></b></div>
+      <div class="row"><span>下方间距</span><input type="range" id="titleGap" min="0" max="2" step="0.1"><b class="val" id="titleGapV"></b></div>
       <div class="row"><span>颜色</span><div class="swatches" id="tcolors"></div></div>
       <div class="row"><span>标示笔</span><div class="swatches" id="mcolors"></div></div>
 
@@ -397,7 +398,7 @@ const tplById = id => TPLS.find(t=>t.id===id) || IMGS[id] || TPLS[0];
 const DEFAULTS = {
   title:'把日子过成喜欢的样子',
   body:'不用急着变成别人期待的样子。\n\n慢慢来，按自己的节奏，把每一件小事做好：早上给自己泡一杯热茶，下班路上看一眼晚霞，睡前写下今天值得开心的三件事。\n\n生活不会一下子变好，但会在这些小小的坚持里，一点一点亮起来。',
-  tpl:'cream', font:'sans', ratio:'3:4', align:'justify', fontSize:50, titleSize:72, lineHeight:1.8, titleFont:'', titleColor:null, markColor:null, ulColor:null,
+  tpl:'cream', font:'sans', ratio:'3:4', align:'justify', fontSize:50, titleSize:72, titleGap:0.4, lineHeight:1.8, titleFont:'', titleColor:null, markColor:null, ulColor:null,
   color:null, bg:null, indent:false, marker:true, showDate:false,
 };
 let st = {...DEFAULTS};
@@ -463,7 +464,7 @@ function layout(st, W, H){
   if (title) {
     mctx.font = fontStr(titleWeight(titleFontOf(st)), tfs, titleFontOf(st));
     for (const ln of wrap(mctx, title, cw, 0)) items.push({kind:'title', h:tlh, g:tfs, line:ln});
-    items.push({kind:'space', h: Math.max(fs, tfs*0.6)});
+    items.push({kind:'space', h: fs * st.titleGap});
   }
   mctx.font = fontStr(400, fs, st.font);
   const indentW = st.indent ? mctx.measureText('中').width * 2 : 0;
@@ -823,8 +824,8 @@ if ('serviceWorker' in navigator) addEventListener('load', () => navigator.servi
 /* 绑定输入 */
 for (const k of ['title','body']) { $(k).value = st[k]; $(k).addEventListener('input', e => { st[k] = e.target.value; update(); }); }
 for (const k of ['indent','marker','showDate']) { $(k).checked = st[k]; $(k).addEventListener('change', e => { st[k] = e.target.checked; update(); }); }
-for (const k of ['titleSize','fontSize','lineHeight']) {
-  const show = () => $(k+'V').textContent = k === 'lineHeight' ? (+st[k]).toFixed(2) : st[k];
+for (const k of ['titleSize','titleGap','fontSize','lineHeight']) {
+  const show = () => $(k+'V').textContent = k === 'lineHeight' ? (+st[k]).toFixed(2) : k === 'titleGap' ? (+st[k]).toFixed(1) : st[k];
   $(k).value = st[k]; show();
   $(k).addEventListener('input', e => { st[k] = +e.target.value; show(); update(); });
 }
