@@ -66,6 +66,7 @@
   .tools button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 12px;font:14px var(--sans);color:var(--ink);cursor:pointer}
   .tools button .hl{background:linear-gradient(transparent 55%,#ffd84d 55%,#ffd84d 92%,transparent 92%)}
   .tools small{font-size:12px;color:var(--muted)}
+  .linkbtn{border:0;background:none;padding:0;font:13px var(--sans);color:var(--accent);text-decoration:underline;cursor:pointer}
   .fstatus{font-size:12px;color:var(--muted);margin:-4px 0 0 72px;min-height:16px}
   .check{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;user-select:none}
   .check input{width:18px;height:18px;accent-color:var(--accent)}
@@ -143,6 +144,9 @@
       <h2 class="section-title">文字样式</h2>
       <div class="row"><span>尺寸</span><div class="seg" id="ratio"></div></div>
       <div class="row"><span>对齐</span><div class="seg" id="align"></div></div>
+      <div class="row"><span>上留白</span><input type="range" id="padTop" min="30" max="320" step="5"><b class="val" id="padTopV"></b></div>
+      <div class="row"><span>下留白</span><input type="range" id="padBottom" min="30" max="320" step="5"><b class="val" id="padBottomV"></b></div>
+      <div class="row" style="margin-top:-4px"><span></span><button type="button" class="linkbtn" id="padReset">留白恢复模板预设</button></div>
 
       <h3 class="sub">标题</h3>
       <div class="row" style="align-items:flex-start"><span style="padding-top:6px">字体</span><div class="seg" id="tfont"></div></div>
@@ -398,7 +402,7 @@ const tplById = id => TPLS.find(t=>t.id===id) || IMGS[id] || TPLS[0];
 const DEFAULTS = {
   title:'把日子过成喜欢的样子',
   body:'不用急着变成别人期待的样子。\n\n慢慢来，按自己的节奏，把每一件小事做好：早上给自己泡一杯热茶，下班路上看一眼晚霞，睡前写下今天值得开心的三件事。\n\n生活不会一下子变好，但会在这些小小的坚持里，一点一点亮起来。',
-  tpl:'cream', font:'sans', ratio:'3:4', align:'justify', fontSize:50, titleSize:72, titleGap:0.4, lineHeight:1.8, titleFont:'', titleColor:null, markColor:null, ulColor:null,
+  tpl:'cream', font:'sans', ratio:'3:4', align:'justify', fontSize:50, titleSize:72, titleGap:0.4, padTop:null, padBottom:null, lineHeight:1.8, titleFont:'', titleColor:null, markColor:null, ulColor:null,
   color:null, bg:null, indent:false, marker:true, showDate:false,
 };
 let st = {...DEFAULTS};
@@ -454,7 +458,7 @@ function wrap(ctx, text, maxW, indentW){
 
 function layout(st, W, H){
   const tpl = tplById(st.tpl);
-  const pad = {l: tpl.left || 100, r:100, t: tpl.top || 150, b: tpl.bottom || 130};
+  const pad = {l: tpl.left || 100, r:100, t: st.padTop ?? (tpl.top || 150), b: st.padBottom ?? (tpl.bottom || 130)};
   const cw = W - pad.l - pad.r, avail = H - pad.t - pad.b;
   const fs = st.fontSize, lh = fs * st.lineHeight;
   const tfs = st.titleSize, tlh = tfs * 1.35;
@@ -570,7 +574,7 @@ function drawPage(ctx, st, W, H, L, pi){
   const total = L.pages.length, ffs = Math.round(Math.max(26, fs * 0.56));
   ctx.font = fontStr(400, ffs, st.font);
   ctx.fillStyle = hexA(color.length === 7 ? color : '#000000', .55);
-  const fy = H - (tpl.foot || 72);
+  const fy = H - Math.max(24, Math.min(tpl.foot || 72, pad.b - 40));   // 下留白很小时，页码往下移
   const right = [];
   if (st.showDate) { const d = new Date(); right.push(`${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`); }
   if (total > 1) right.push(`${pi+1}/${total}`);
@@ -613,7 +617,7 @@ function buildTplThumbs(){
     const s = {...sample, tpl:t.id};
     drawPage(ctx, s, 1080, 1440, layout(s, 1080, 1440), 0);
     b.appendChild(c); b.append(t.name);
-    b.onclick = () => { st.tpl = t.id; box.querySelectorAll('.tpl').forEach(x=>x.classList.remove('on')); b.classList.add('on'); update(); };
+    b.onclick = () => { st.tpl = t.id; box.querySelectorAll('.tpl').forEach(x=>x.classList.remove('on')); b.classList.add('on'); syncPad(); update(); };
     if (t.image) {
       const x = document.createElement('span'); x.className = 'x'; x.textContent = '✕'; x.title = '删除这张底图';
       x.onclick = async e => {
@@ -830,6 +834,15 @@ if ('serviceWorker' in navigator) addEventListener('load', () => navigator.servi
 /* 绑定输入 */
 for (const k of ['title','body']) { $(k).value = st[k]; $(k).addEventListener('input', e => { st[k] = e.target.value; update(); }); }
 for (const k of ['indent','marker','showDate']) { $(k).checked = st[k]; $(k).addEventListener('change', e => { st[k] = e.target.checked; update(); }); }
+/* 上下留白：没调过就跟着模板的预设值 */
+function syncPad(){
+  const tpl = tplById(st.tpl);
+  const t = st.padTop ?? (tpl.top || 150), b = st.padBottom ?? (tpl.bottom || 130);
+  $('padTop').value = t; $('padTopV').textContent = t;
+  $('padBottom').value = b; $('padBottomV').textContent = b;
+}
+for (const k of ['padTop','padBottom']) $(k).addEventListener('input', e => { st[k] = +e.target.value; $(k+'V').textContent = st[k]; update(); });
+$('padReset').onclick = () => { st.padTop = st.padBottom = null; syncPad(); update(); };
 for (const k of ['titleSize','titleGap','fontSize','lineHeight']) {
   const show = () => $(k+'V').textContent = k === 'lineHeight' ? (+st[k]).toFixed(2) : k === 'titleGap' ? (+st[k]).toFixed(1) : st[k];
   $(k).value = st[k]; show();
@@ -847,6 +860,7 @@ buildAllSwatches();
   buildFonts();
   if (FONTS[st.font].family || st.titleFont) { fstatus('正在载入字体…'); await loadFonts(); fstatus(''); }
   buildTplThumbs();
+  syncPad();
   render();
 })();
 })();
